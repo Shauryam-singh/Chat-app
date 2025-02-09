@@ -3,7 +3,9 @@ import { FaCheckDouble } from "react-icons/fa";
 const Message = ({ text, user, avatar, timestamp, read, darkMode }: any) => {
   return (
     <div className={`flex items-start ${user === "You" ? "justify-end" : "justify-start"}`}>
-      <div className={`flex items-center space-x-3 p-3 rounded-xl shadow-md max-w-xs ${darkMode ? "bg-gray-700 text-white" : "bg-white"}`}>
+      <div
+  className={`flex items-center space-x-3 p-3 rounded-xl shadow-md max-w-xs ${
+    user === "You" ? darkMode ? "bg-blue-500 text-white" : "bg-blue-200 text-black" : darkMode ? "bg-white" : "bg-gray-700 text-white"}`}>
         {avatar && <img src={avatar} alt="Avatar" className="w-8 h-8 rounded-full" />}
         <div>
           <p className="font-semibold">{user}</p>

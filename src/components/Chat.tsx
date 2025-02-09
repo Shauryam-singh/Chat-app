@@ -10,7 +10,7 @@ import {
   doc,
 } from "firebase/firestore";
 import { db, auth } from "../firebase";
-import { FaPaperPlane, FaMoon, FaSun } from "react-icons/fa";
+import { FaPaperPlane, FaMoon, FaSun, FaReply, FaSmile } from "react-icons/fa";
 import { motion } from "framer-motion";
 import Confetti from "react-confetti";
 import useSound from "use-sound";
@@ -25,7 +25,8 @@ interface MessageType {
   avatar: string;
   timestamp?: any;
   read: boolean;
-  reactions?: { [userId: string]: string }; // Store reactions per user
+  reactions?: { [userId: string]: string };
+  replyTo?: MessageType | null;
 }
 
 // Emoji Reactions
@@ -34,12 +35,16 @@ const emojiList = ["😂", "❤️", "🔥", "😎", "👍", "🎉"];
 const Chat = () => {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [text, setText] = useState<string>("");
-  const [typing, setTyping] = useState<boolean>(false);
-  const [darkMode, setDarkMode] = useState<boolean>(true);
+  const [darkMode, setDarkMode] = useState<boolean>(
+    localStorage.getItem("darkMode") === "true" // Load preference
+  );
   const [showConfetti, setShowConfetti] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<MessageType | null>(null);
+  const [showReactions, setShowReactions] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [playSend] = useSound(sendSound);
 
+  // Fetch Messages from Firestore
   useEffect(() => {
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -54,16 +59,22 @@ const Chat = () => {
     return () => unsubscribe();
   }, []);
 
+  // Scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setText(e.target.value);
-    setTyping(true);
-    setTimeout(() => setTyping(false), 1500);
-  };
+  // Handle Dark Mode Toggle
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem("darkMode", String(darkMode)); // Save preference
+  }, [darkMode]);
 
+  // Handle Sending Message
   const sendMessage = async () => {
     if (!text.trim()) return;
 
@@ -76,10 +87,12 @@ const Chat = () => {
       avatar: user.photoURL || "",
       timestamp: serverTimestamp(),
       read: false,
-      reactions: {}, // Initialize empty reactions
+      reactions: {},
+      replyTo: replyingTo ? { ...replyingTo } : null, // Save the reply reference
     });
 
     setText("");
+    setReplyingTo(null);
     playSend();
     setShowConfetti(true);
     setTimeout(() => setShowConfetti(false), 2000);
@@ -95,15 +108,15 @@ const Chat = () => {
     if (!message) return;
 
     const updatedReactions = { ...(message.reactions || {}) };
-    updatedReactions[user.uid] = emoji; // Store reaction per user
+    updatedReactions[user.uid] = emoji;
 
-    await updateDoc(messageRef, { reactions: updatedReactions }); // Update Firestore
+    await updateDoc(messageRef, { reactions: updatedReactions });
   };
 
   return (
-    <div className={`h-screen flex flex-col transition-all duration-300 ${darkMode ? "bg-gray-900 text-white" : "bg-gradient-to-br from-blue-100 to-blue-300"}`}>
+    <div className={`h-screen flex flex-col transition-all duration-300 ${darkMode ? "bg-gray-900 text-white" : "bg-blue-100 text-black"}`}>
       {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} />}
-      
+
       {/* Header */}
       <motion.div className={`p-4 shadow-md fixed w-full top-0 flex justify-between items-center px-6 ${darkMode ? "bg-gray-800" : "bg-white"}`} initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5 }}>
         <h1 className="text-xl font-semibold">Chat App</h1>
@@ -113,27 +126,44 @@ const Chat = () => {
       </motion.div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 mt-16 space-y-4">
+      <div className={`flex-1 overflow-y-auto p-6 mt-16 mb-16 space-y-4`}>
         {messages.map((msg) => (
-          <motion.div
-            key={msg.id}
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4 }}
-            className="group relative"
-          >
-            <Message {...msg} darkMode={darkMode} />
+          <motion.div key={msg.id} initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }} className="group relative">
+            {/* Display Reply If Exists */}
+            {msg.replyTo && (
+              <div className="mb-2 p-2 bg-gray-700 text-sm rounded-md">
+                <span className="font-semibold">{msg.replyTo.user}:</span> {msg.replyTo.text}
+              </div>
+            )}
 
-            {/* Emoji Reactions - Shown on Hover */}
-            <div className="absolute -top-6 left-4 flex space-x-2 bg-gray-700 text-white p-2 rounded-lg shadow-md opacity-0 group-hover:opacity-100 transition duration-300">
-              {emojiList.map((emoji) => (
-                <button key={emoji} className="text-xl" onClick={() => addReaction(msg.id, emoji)}>
-                  {emoji}
+            {/* Message Component */}
+            <Message {...msg} />
+
+            {/* Reply & React Buttons */}
+            <div className="absolute -top-6 right-4 flex space-x-2 bg-gray-700 text-white p-2 rounded-lg shadow-md opacity-0 group-hover:opacity-100 transition duration-300">
+              <button className="text-xl" onClick={() => setReplyingTo(msg)}>
+                <FaReply />
+              </button>
+
+              {/* Reaction Button */}
+              <div className="relative">
+                <button className="text-xl" onClick={() => setShowReactions(showReactions === msg.id ? null : msg.id)}>
+                  <FaSmile />
                 </button>
-              ))}
+
+                {showReactions === msg.id && (
+                  <div className="absolute -top-12 -right-6 bg-gray-800 p-2 rounded-lg shadow-md flex space-x-2">
+                    {emojiList.map((emoji) => (
+                      <button key={emoji} className="text-lg" onClick={() => addReaction(msg.id, emoji)}>
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Show Selected Reaction */}
+            {/* Show Selected Reactions */}
             {msg.reactions && Object.values(msg.reactions).length > 0 && (
               <p className="text-sm mt-1 text-gray-400">
                 {Object.values(msg.reactions).join(" ")}
@@ -144,19 +174,16 @@ const Chat = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Typing Animation */}
-      {typing && (
-        <motion.div className="text-center text-sm text-gray-500 mb-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}>
-          <span className="animate-pulse">Typing</span>
-          <span className="dot1">.</span>
-          <span className="dot2">.</span>
-          <span className="dot3">.</span>
-        </motion.div>
-      )}
-
       {/* Message Input */}
-      <motion.div className={`p-4 shadow-md flex items-center fixed bottom-0 w-full ${darkMode ? "bg-gray-800" : "bg-white"}`} initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5 }}>
-        <motion.input type="text" value={text} onChange={handleTyping} className="flex-1 p-3 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition" placeholder="Type a message..." whileFocus={{ scale: 1.01, borderColor: "#3b82f6" }} />
+      <motion.div className={`p-4 shadow-md flex items-center ${darkMode ? "bg-gray-900" : "bg-white"} fixed bottom-0 w-full`}>
+        <motion.input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          className={`flex-1 p-3 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? "text-white" : "text-gray-900"} transition`}
+          placeholder="Type a message..."
+          whileFocus={{ scale: 1.01, borderColor: "#3b82f6" }}
+        />
         <motion.button onClick={sendMessage} className="ml-3 p-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition shadow-lg" whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }}>
           <FaPaperPlane className="text-lg" />
         </motion.button>
