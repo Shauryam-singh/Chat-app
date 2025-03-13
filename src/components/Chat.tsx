@@ -14,7 +14,7 @@ import Confetti from "react-confetti";
 import useSound from "use-sound";
 import sendSound from "../assets/send.mp3";
 import Message from "./Message";
-import '../App.css'
+import "../App.css";
 
 const ROOM_KEY = "SECRET123";
 
@@ -34,7 +34,7 @@ const Chat = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [darkMode, setDarkMode] = useState<boolean>(
     JSON.parse(localStorage.getItem("darkMode") || "false")
-  );  
+  );
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [playSend] = useSound(sendSound);
 
@@ -46,7 +46,7 @@ const Chat = () => {
       document.body.classList.remove("dark");
     }
   }, [darkMode]);
-  
+
   // Fetch Messages from Firestore
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -111,12 +111,8 @@ const Chat = () => {
     return (
       <div className="auth-box h-screen flex flex-col justify-center items-center">
         <div className="p-6 rounded-xl shadow-lg text-center">
-          <h1 className="text-2xl font-semibold mb-4">
-            Enter Room Key
-          </h1>
-          <p className="mb-4">
-            You need a secret key to access the chat.
-          </p>
+          <h1 className="text-2xl font-semibold mb-4">Enter Room Key</h1>
+          <p className="mb-4">You need a secret key to access the chat.</p>
           <input
             type="password"
             value={enteredKey}
@@ -136,6 +132,18 @@ const Chat = () => {
     );
   }
 
+  // ✅ Group Messages by Date
+  const groupedMessages: { [date: string]: MessageType[] } = {};
+  messages.forEach((msg) => {
+    const date = new Date(msg.timestamp?.seconds * 1000)
+      .toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
+    if (!groupedMessages[date]) {
+      groupedMessages[date] = [];
+    }
+    groupedMessages[date].push(msg);
+  });
+
   return (
     <div className="main h-screen flex flex-col">
       {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} />}
@@ -150,15 +158,20 @@ const Chat = () => {
 
       {/* Messages */}
       <div className="chat-container flex-1 overflow-y-auto p-6 mb-16 space-y-4">
-        {messages.map((msg) => (
-          <motion.div
-            key={msg.id}
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <Message {...msg} />
-          </motion.div>
+        {Object.keys(groupedMessages).map((date) => (
+          <div key={date}>
+            <div className="text-center text-gray-500 font-semibold my-4">{date}</div>
+            {groupedMessages[date].map((msg) => (
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <Message {...msg} />
+              </motion.div>
+            ))}
+          </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
