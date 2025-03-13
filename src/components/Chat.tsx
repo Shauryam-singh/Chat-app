@@ -15,7 +15,6 @@ import useSound from "use-sound";
 import sendSound from "../assets/send.mp3";
 import Message from "./Message";
 
-// ✅ Fixed Room Key
 const ROOM_KEY = "SECRET123";
 
 interface MessageType {
@@ -32,14 +31,13 @@ const Chat = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [enteredKey, setEnteredKey] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
-    return localStorage.getItem("darkMode") === "true";
-  });
+  const [darkMode, setDarkMode] = useState<boolean>(
+    localStorage.getItem("darkMode") === "true"
+  );
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [playSend] = useSound(sendSound);
 
   // ✅ Apply Dark Mode on Mount
-
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
@@ -95,7 +93,6 @@ const Chat = () => {
   };
 
   // ✅ Toggle Dark Mode
-
   const toggleDarkMode = () => {
     setDarkMode((prev) => {
       const newMode = !prev;
