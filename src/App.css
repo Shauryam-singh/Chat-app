@@ -1,20 +1,29 @@
 .dot1, .dot2, .dot3 {
-    display: inline-block;
-    font-size: 16px;
-    animation: typing-animation 1.5s infinite;
-  }
-  
-  .dot2 {
-    animation-delay: 0.2s;
-  }
-  
-  .dot3 {
-    animation-delay: 0.4s;
-  }
-  
-  @keyframes typing-animation {
-    0% { opacity: 0; }
-    50% { opacity: 1; }
-    100% { opacity: 0; }
-  }
-  
+  display: inline-block;
+  font-size: 16px;
+  animation: typing-animation 1.5s infinite;
+}
+
+.dot2 {
+  animation-delay: 0.2s;
+}
+
+.dot3 {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing-animation {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+body {
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Dark Mode */
+body.dark, .auth-box.dark {
+  background-color: #1a202c;
+  color: #e2e8f0;
+}

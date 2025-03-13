@@ -14,6 +14,7 @@ import Confetti from "react-confetti";
 import useSound from "use-sound";
 import sendSound from "../assets/send.mp3";
 import Message from "./Message";
+import '../App.css'
 
 const ROOM_KEY = "SECRET123";
 
@@ -32,16 +33,20 @@ const Chat = () => {
   const [enteredKey, setEnteredKey] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [darkMode, setDarkMode] = useState<boolean>(
-    localStorage.getItem("darkMode") === "true"
-  );
+    JSON.parse(localStorage.getItem("darkMode") || "false")
+  );  
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [playSend] = useSound(sendSound);
 
   // ✅ Apply Dark Mode on Mount
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", darkMode);
+    if (darkMode) {
+      document.body.classList.add("dark");
+    } else {
+      document.body.classList.remove("dark");
+    }
   }, [darkMode]);
-
+  
   // Fetch Messages from Firestore
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -96,7 +101,7 @@ const Chat = () => {
   const toggleDarkMode = () => {
     setDarkMode((prev) => {
       const newMode = !prev;
-      localStorage.setItem("darkMode", JSON.stringify(newMode));
+      localStorage.setItem("darkMode", JSON.stringify(newMode)); // Ensure proper boolean storage
       return newMode;
     });
   };
@@ -104,19 +109,19 @@ const Chat = () => {
   // ✅ If User Hasn't Entered Correct Key → Show Key Input
   if (!isAuthenticated) {
     return (
-      <div className="h-screen flex flex-col justify-center items-center bg-gray-100 dark:bg-gray-900">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg text-center">
-          <h1 className="text-2xl font-semibold text-gray-800 dark:text-white mb-4">
+      <div className="auth-box h-screen flex flex-col justify-center items-center">
+        <div className="p-6 rounded-xl shadow-lg text-center">
+          <h1 className="text-2xl font-semibold mb-4">
             Enter Room Key
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
+          <p className="mb-4">
             You need a secret key to access the chat.
           </p>
           <input
             type="password"
             value={enteredKey}
             onChange={(e) => setEnteredKey(e.target.value)}
-            className="w-full p-2 border rounded-md text-center dark:bg-gray-700 dark:text-white"
+            className="w-full p-2 border rounded-md text-center"
             placeholder="Enter Secret Key"
           />
           <button
@@ -132,11 +137,11 @@ const Chat = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900">
+    <div className="main h-screen flex flex-col">
       {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} />}
 
       {/* ✅ Header with Dark Mode Toggle */}
-      <header className="p-4 shadow-md flex items-center justify-between bg-white dark:bg-gray-800 text-gray-800 dark:text-white">
+      <header className="p-4 shadow-md flex items-center justify-between">
         <h1 className="text-xl font-semibold">Chat Room</h1>
         <button onClick={toggleDarkMode} className="text-2xl">
           {darkMode ? <FaSun className="text-yellow-400" /> : <FaMoon />}
@@ -144,7 +149,7 @@ const Chat = () => {
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 mb-16 space-y-4">
+      <div className="chat-container flex-1 overflow-y-auto p-6 mb-16 space-y-4">
         {messages.map((msg) => (
           <motion.div
             key={msg.id}
@@ -159,14 +164,13 @@ const Chat = () => {
       </div>
 
       {/* Message Input */}
-      <motion.div className="p-4 shadow-md flex items-center bg-white dark:bg-gray-800 fixed bottom-0 w-full">
+      <motion.div className="message-input p-4 shadow-md flex items-center fixed bottom-0 w-full">
         <motion.input
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          className="flex-1 p-3 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100 dark:bg-gray-700 dark:text-white transition"
+          className="flex-1 p-3 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
           placeholder="Type a message..."
-          whileFocus={{ scale: 1.01, borderColor: "#3b82f6" }}
         />
         <motion.button
           onClick={sendMessage}
