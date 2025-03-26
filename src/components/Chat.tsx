@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   addDoc,
   collection,
@@ -16,7 +16,7 @@ import sendSound from "../assets/send.mp3";
 import Message from "./Message";
 import "../App.css";
 
-const ROOM_KEY = "SECRET123";
+const ROOM_KEY = import.meta.env.VITE_CHAT_SECRET_ID;
 
 interface MessageType {
   id: string;
@@ -28,26 +28,23 @@ interface MessageType {
 
 const Chat = () => {
   const [messages, setMessages] = useState<MessageType[]>([]);
-  const [text, setText] = useState<string>("");
+  const [text, setText] = useState("");
   const [showConfetti, setShowConfetti] = useState(false);
   const [enteredKey, setEnteredKey] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [darkMode, setDarkMode] = useState<boolean>(
-    JSON.parse(localStorage.getItem("darkMode") || "false")
-  );
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    return JSON.parse(localStorage.getItem("darkMode") || "false");
+  });
+
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [playSend] = useSound(sendSound);
 
   // ✅ Apply Dark Mode on Mount
   useEffect(() => {
-    if (darkMode) {
-      document.body.classList.add("dark");
-    } else {
-      document.body.classList.remove("dark");
-    }
+    document.body.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
-  // Fetch Messages from Firestore
+  // ✅ Fetch Messages from Firestore
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -64,13 +61,13 @@ const Chat = () => {
     return () => unsubscribe();
   }, [isAuthenticated]);
 
-  // Scroll to bottom when new messages arrive
+  // ✅ Scroll to Bottom when New Messages Arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Handle Sending Message
-  const sendMessage = async () => {
+  // ✅ Handle Sending Message
+  const sendMessage = useCallback(async () => {
     if (!text.trim()) return;
     const user = auth.currentUser;
     if (!user) return;
@@ -86,48 +83,59 @@ const Chat = () => {
     playSend();
     setShowConfetti(true);
     setTimeout(() => setShowConfetti(false), 2000);
-  };
+  }, [text, playSend]);
 
   // ✅ Handle Key Submission
-  const handleKeySubmit = () => {
-    if (enteredKey === ROOM_KEY) {
+  const handleKeySubmit = useCallback(() => {
+    if (enteredKey.trim() === ROOM_KEY) {
       setIsAuthenticated(true);
     } else {
-      alert("Incorrect Room Key! Try Again.");
+      alert("❌ Incorrect Room Key! Please try again.");
+      setEnteredKey(""); // Clear input after incorrect attempt
     }
-  };
+  }, [enteredKey]);
 
   // ✅ Toggle Dark Mode
-  const toggleDarkMode = () => {
+  const toggleDarkMode = useCallback(() => {
     setDarkMode((prev) => {
-      const newMode = !prev;
-      localStorage.setItem("darkMode", JSON.stringify(newMode)); // Ensure proper boolean storage
-      return newMode;
+      localStorage.setItem("darkMode", JSON.stringify(!prev));
+      return !prev;
     });
-  };
+  }, []);
 
-  // ✅ If User Hasn't Entered Correct Key → Show Key Input
+  // ✅ Secret Key Authentication Page
   if (!isAuthenticated) {
     return (
-      <div className="auth-box h-screen flex flex-col justify-center items-center">
-        <div className="p-6 rounded-xl shadow-lg text-center">
-          <h1 className="text-2xl font-semibold mb-4">Enter Room Key</h1>
-          <p className="mb-4">You need a secret key to access the chat.</p>
+      <div className="h-screen flex items-center justify-center bg-gradient-to-r from-blue-500 to-purple-600">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="bg-white dark:bg-gray-900 p-8 rounded-3xl shadow-2xl text-center w-96 transform transition-all duration-500 hover:scale-105"
+        >
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-3">
+            🔐 Enter Secret Key
+          </h1>
+          <p className="text-gray-500 dark:text-gray-300 mb-6">
+            You need a secret key to access the chat room.
+          </p>
+
           <input
             type="password"
             value={enteredKey}
             onChange={(e) => setEnteredKey(e.target.value)}
-            className="w-full p-2 border rounded-md text-center"
+            className="w-full p-3 border rounded-xl text-center text-gray-700 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
             placeholder="Enter Secret Key"
           />
+
           <button
             onClick={handleKeySubmit}
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-300"
+            className="mt-4 px-4 py-3 bg-blue-500 text-white font-semibold rounded-xl shadow-lg hover:bg-blue-600 transition duration-300 w-full flex items-center justify-center gap-2"
           >
-            <FaLock className="inline-block mr-2" />
+            <FaLock className="text-lg" />
             Enter Room
           </button>
-        </div>
+        </motion.div>
       </div>
     );
   }
